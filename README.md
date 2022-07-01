@@ -3,7 +3,7 @@ This is the collection Shared functions used in many scripts
 
 
 ## Function list 
-- Pulled 7/1/2022
+- Pulled 7/1/2022 using `grep -rE '^\w+ *= *function\(' .` in shell
 
 ```R
 function_seurat_transfer_meta_assay.R:AddMetaAssayToObjList = function(obj_list, predition_list, assay_name='new')
