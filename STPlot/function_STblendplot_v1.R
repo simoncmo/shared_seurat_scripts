@@ -1,12 +1,12 @@
 library('Seurat')
 
-source('/diskmnt/Datasets/Spatial_Transcriptomics/Analysis/NMK/NMK_integration_v5/script/function_ST_plot_general_v1.R')
+#source('/diskmnt/Datasets/Spatial_Transcriptomics/Analysis/NMK/NMK_integration_v5/script/function_ST_plot_general_v1.R')
 
 
 # Main function
-STBlendPlot = function(st, feature_pairs, images=1, show_histology=F, wrap_slices=T,...){
+STBlendPlot = function(st, feature_pairs, images=1, show_histology=F, show_blend_only = F, wrap_slices=T,...){
   if(typeof(feature_pairs)!='list') stop('STOP: feature_pairs need to be a list')
-  show_blend_only   =ifelse(length(feature_pairs)>1, T, F) 
+  #show_blend_only   =ifelse(length(feature_pairs)>1, T, F) 
   MultiFeatureSTBlendPlot(st, feature_pairs, images, show_blend_only=show_blend_only, show_histology=show_histology, wrap_slices=T,...)
 }
 
@@ -85,7 +85,7 @@ SingleSTBlendPlot = function(st, features, combine = T, assay = 'SCT', image, sh
                        multi_slice_exp_df, # Used for multiple slice and speed up fetching exp data
                        show_blend_only= F, plot_title = c('gene','slice','slice-gene'),
                        flip_x =F, flip_y=F,
-                       pt_size=1,
+                       pt.size.factor=1,
                        feature_colors =c("#ff0000", "#00ff00"), negative_color = 'gray10'){
   # Select cells for normalization
   if(missing(normalizing_cellids) | !normalize_among_slices ) normalizing_cellids = rownames(st@images[[image]]@coordinates)
@@ -151,7 +151,7 @@ SingleSTBlendPlot = function(st, features, combine = T, assay = 'SCT', image, sh
   y_axis = if(flip_y) scale_y_reverse(expand = c(0,0), limits = c(64,-64)) else scale_y_continuous(expand = c(0,0), limits = c(-64,64))
   
   # Apply shared setups
-  plist = map(plist, ~. + geom_point(size=pt_size) + coord_fixed() + theme_void() + 
+  plist = map(plist, ~. + geom_point(size=pt.size.factor) + coord_fixed() + theme_void() + 
                 x_axis +
                 y_axis + 
                 theme(plot.title = element_text(face = 'bold', hjust=0.5),
