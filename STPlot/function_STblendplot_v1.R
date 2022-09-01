@@ -80,13 +80,17 @@ MultiImageSTBlendPlot = function(st, feature_pair, images=1, combine=F, assay = 
 
 
 ### V3 Current working version 8/3/2021
+# Adding new scaling function 8/31/2022
 SingleSTBlendPlot = function(st, features, combine = T, assay = 'SCT', image, show_blend_legend =T,
                        normalizing_cellids, normalize_among_slices = T, # This is used when plotting multiple slices
                        multi_slice_exp_df, # Used for multiple slice and speed up fetching exp data
                        show_blend_only= F, plot_title = c('gene','slice','slice-gene'),
                        flip_x =F, flip_y=F,
                        pt.size.factor=1,
-                       feature_colors =c("#ff0000", "#00ff00"), negative_color = 'gray10'){
+                       feature_colors =c("#ff0000", "#00ff00"), negative_color = 'gray10',
+                       # Allow x, y scaling : 8/31/2022
+                       scale_x = 1, scale_y = 1
+                            ){
   # Select cells for normalization
   if(missing(normalizing_cellids) | !normalize_among_slices ) normalizing_cellids = rownames(st@images[[image]]@coordinates)
 
@@ -126,36 +130,44 @@ SingleSTBlendPlot = function(st, features, combine = T, assay = 'SCT', image, sh
                           'gene' = str_c(features[1],features[2], sep='-'), 
                           'slice' = image, 
                           'slice-gene' = str_glue('{image} {str_c(features[1],features[2], sep="-")}'))
+        
+  # New Aug 2022 - allow scaling of x and y axis
+  exp_df_blend = exp_df_blend %>% mutate(imagecol = imagecol * scale_x)
+  exp_df_blend = exp_df_blend %>% mutate(imagerow = imagerow * scale_y)
   
-  # Plot
+  # Plot - changed to imagecol/imagerow 8/31/2022
   plist = list()  
   if(!show_blend_only){
     plist[[features[[1]] ]] = exp_df_blend %>%
-      ggplot(aes_string(x = 'row', y='col', color = paste0('`',features[[1]],'`') )) + 
+      ggplot(aes_string(x = 'imagecol', y='imagerow', color = paste0('`',features[[1]],'`') )) + 
       scale_color_gradientn(colors = col_blend[,1], limits = c(0,9)) + # Set color range be 0-9 to get correct color range
       labs(title = title_list[1])
     
     plist[[features[[2]] ]] = exp_df_blend %>%
-      ggplot(aes_string(x = 'row', y='col', color = paste0('`',features[[2]],'`'))) + 
+      ggplot(aes_string(x = 'imagecol', y='imagerow', color = paste0('`',features[[2]],'`'))) + 
       scale_color_gradientn(colors = col_blend[1,], limits = c(0, 9)) + # Set color range be 0-9 to get correct color range
       labs(title = title_list[2])
   }
   # Blend plot
   plist[[str_c(features, collapse ="_")]] = exp_df_blend %>%
-    ggplot(aes_string(x = 'row', y='col', color = paste0('`',str_c(features, collapse ="_"),'`')   )) + 
+    ggplot(aes_string(x = 'imagecol', y='imagerow', color = paste0('`',str_c(features, collapse ="_"),'`')   )) + 
     scale_color_gradientn(colors = as.vector(col_blend), limits = c(0,99)) + # Set color range be 0-99 to get correct color range
     labs(title = title_list[3])
 
-  # axis orientation
-  x_axis = if(flip_x) scale_x_reverse(expand = c(0,0), limits = c(64,-64)) else scale_x_continuous(expand = c(0,0), limits = c(-64,64))
-  y_axis = if(flip_y) scale_y_reverse(expand = c(0,0), limits = c(64,-64)) else scale_y_continuous(expand = c(0,0), limits = c(-64,64))
+  # axis orientation - changed 
+  #x_axis = if(flip_x) scale_x_reverse(expand = c(0,0), limits = c(64,-64)) else scale_x_continuous(expand = c(0,0), limits = c(-64,64))
+  #y_axis = if(flip_y) scale_y_reverse(expand = c(0,0), limits = c(64,-64)) else scale_y_continuous(expand = c(0,0), limits = c(-64,64))
+  x_axis = if(flip_x) scale_x_reverse(expand = c(0,0)) else scale_x_continuous(expand = c(0,0))
+  y_axis = if(flip_y) scale_y_reverse(expand = c(0,0)) else scale_y_continuous(expand = c(0,0))
+ 
   
   # Apply shared setups
   plist = map(plist, ~. + geom_point(size=pt.size.factor) + coord_fixed() + theme_void() + 
                 x_axis +
                 y_axis + 
                 theme(plot.title = element_text(face = 'bold', hjust=0.5),
-                      plot.margin = unit(c(0,0,0,0), 'lines')) + 
+                      plot.margin = unit(c(0,0,0,0), 'lines')
+                     ) + 
                 NoLegend() )
 
   # Set to 1 color if all 0
