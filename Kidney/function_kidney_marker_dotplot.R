@@ -1,3 +1,13 @@
+#### Utility ####
+# Clean marker list 
+# remove genes show up in more than cell type
+#################
+MakeMarkerListUnique = function(marker_list){
+  # Reduce
+  markers_more_than_one_cell_types = marker_list %>% unlist %>% table %>% .[.>1] %>% names
+  cell_type_markers_unique = map(marker_list, ~setdiff(., markers_more_than_one_cell_types)) %>% .[!is.na(.)]
+  return(cell_type_markers_unique)
+}
 
 
 ################################################
@@ -43,29 +53,63 @@ GetKidenyDataSet = function(dataset = c('Human_healthy_adult_kidney','Human_heal
     Undefined_2=c("LINC00621","TMEM178B","C1orf186","DCC","MEG3","PRICKLE1","MSC-AS1","CLSTN2","APBB1IP","CREB5","TPM1","ITGB8","ALPK2","MYO3A","UGT2B11","EGOT","VCAM1","COL23A1","PLA2G4C","EPB41L2"))
     ################################################
 
-    # Reduce
-    markers_more_than_one_cell_types = cell_type_markers %>% unlist %>% table %>% .[.>1] %>% names
-    cell_type_markers_unique = map(cell_type_markers, ~setdiff(., markers_more_than_one_cell_types)) %>% .[!is.na(.)]
-
-
     if(dataset == 'Human_healthy_adult_kidney'){
         marker_use = cell_type_markers
     }else{
         marker_use = cell_type_markers_epi
     }
+  
+    return(MakeMarkerListUnique(marker_use))
+}
 
-    # Reduce
-    markers_more_than_one_cell_types = marker_use %>% unlist %>% table %>% .[.>1] %>% names
-    cell_type_markers_unique = map(marker_use, ~setdiff(., markers_more_than_one_cell_types)) %>% .[!is.na(.)]
-
-    # Plot
+################################################
+# API
+# Make Dot plot for each gene in marker list
+# Use marker_list to supply external marker list 
+################################################
+MakeKidneyMarkerDotPlot = function(obj, group.by = 'seurat_clusters', dataset = 'Human_healthy_adult_kidney', marker_list, sample_name = NULL, ...){
+    if(!missing(marker_list)){
+      message('Using external marker list')
+      marker_use = MakeMarkerListUnique(marker_list)
+    }else{
+      message(str_glue('Using {dataset} dataset'))
+      marker_use = GetKidenyDataSet(dataset)
+    }
+    DotPlot(obj, group.by = group.by, features = marker_use)+ RotatedAxis() + 
+    labs(title = dataset, subtitle = sample_name) + 
+    scale_color_gradientn(colors = RColorBrewer::brewer.pal(9, 'YlOrRd')[2:9]) + 
+    theme(axis.text.x = element_text(size = 6))
 }
 
 
-MakeKidneyMarkerDotPlot = function(obj, group.by = 'seurat_clusters', dataset = 'Human_healthy_adult_kidney', ...){
-    marker_use = GetKidenyDataSet(dataset)
-    DotPlot(obj, group.by = group.by, features = marker_use)+ RotatedAxis() + 
-    labs(title = dataset) + 
-    scale_color_gradientn(colors = RColorBrewer::brewer.pal(9, 'YlOrRd')[2:9]) + 
-    theme(axis.text.x = element_text(size = 6))
+################################################
+# API
+# Average "MakeKidneyMarkerDotPlot' the plot to make easier decision on which cell type it is
+################################################
+MakeMarkerAverageExprPlot = function(obj, group.by = 'seurat_clusters', dataset = 'Human_healthy_adult_kidney', marker_list, sample_name, ...){
+  o_dot = MakeKidneyMarkerDotPlot(obj, group.by = 'seurat_clusters', dataset = 'Human_healthy_adult_kidney', marker_list, ...)
+  
+  # Get expression table
+  avg_df = o_dot$data %>% 
+    group_by(id, feature.groups) %>% 
+    summarize(mean_expr = mean(avg.exp.scaled), 
+              weighted_exp_score = mean(avg.exp.scaled * pct.exp), 
+              pct_score = mean(pct.exp)) %>% 
+    filter(!is.na(feature.groups), !is.na(id))
+  
+  # Make Average expr plot
+  p_score = avg_df %>% ggplot(aes(x = feature.groups, y = id, color = mean_expr, size = pct_score)) + 
+    geom_point() + 
+    scale_color_gradientn(colors = RColorBrewer::brewer.pal(11, 'RdBu')[2:11] %>% rev) + 
+    labs(title ='Marker Average Expression Score', x ='', y= '', subtitle = sample_name)
+  
+  # Make scaled plot
+  avg_df_scaled = avg_df %>% group_by(id) %>% mutate(scaled_mean_expr = scale(mean_expr)[,1])
+  p_score_scaled = avg_df_scaled %>% ggplot(aes(x = feature.groups, y = id, fill = scaled_mean_expr)) + 
+    geom_tile() +
+    scale_fill_gradientn(colors = RColorBrewer::brewer.pal(11, 'RdBu')[2:11] %>% rev) + 
+    labs(title ='Scaled Marker Average Expression Score', x ='', y= '', subtitle = sample_name)
+  
+  # output
+  p_score/p_score_scaled & cowplot::theme_cowplot() & RotatedAxis() 
 }
