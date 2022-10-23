@@ -4,6 +4,19 @@ library(tidyverse)
 library(patchwork)
 library(viridis)
 
+# Helper function
+# Use image name to replace orig.ident for plotting
+ReplaceMetaWithImageName = function(obj, target_col = 'orig.ident'){
+  # Get Image Name Table
+  image_name_table = map(Images(obj), function(slide_name){
+    data.frame(id = obj@images[[slide_name]]@coordinates %>% rownames(), image_name = slide_name)
+  }) %>% bind_rows() %>% column_to_rownames(('id'))
+  # Replace orig.ident in obj
+  AddMetaData(obj, metadata = image_name_table[rownames(obj@meta.data), 'image_name', drop=T], col.name = target_col)
+}
+
+
+
 SpatialDimPlotOrganizedList = function(obj, plot_meta,  nrow = 3, rainbow_col =T, hide_image=F){
 
 map(plot_meta, function(group.by){
@@ -39,7 +52,11 @@ SpatialFeaturePlotPlus = function(obj, features, images, expression_ref_obj, sam
         images = Images(obj)
     }
     if(!all(images %in% obj$orig.ident)){
+        # Try fix it
+        obj = ReplaceMetaWithImageName(obj)
+        if(!all(images %in% obj$orig.ident)){ # check again
             stop("Not all images provided found in orig.ident. Make sure image names are the same in orig.ident")
+        }
     }
     # # Subset object with only given sample and features
     
