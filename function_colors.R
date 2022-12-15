@@ -1,5 +1,5 @@
 # Extrend a color palette with DiscretePalette from Seurat
-ExtendColorVector = function(color_vector, target_class, reduce = T, palettes_use = 'glasbey', palette_method = c('Seurat','RColorBrewer'), randomize = F){
+ExtendColorVector = function(color_vector = NULL, target_class, reduce = T, palettes_use = 'glasbey', palette_method = c('Seurat','RColorBrewer'), randomize = F){
     missing_classes = setdiff(unique(target_class), names(color_vector))
     # Get color and assign
     palette_method = match.arg(palette_method)
