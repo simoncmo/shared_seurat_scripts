@@ -138,6 +138,7 @@ FindAllMarkerTable2GSEAresult = function(deg_df, split_column = 'cluster',
     })
 
     # Clean up result
+    # Could be simplify to %>% discard(.p = ~length(.)==0) if no need to print message
     if(remove_empty_results){
         message("Remove empty results")
         result_list = imap(result_list, function(gsea_result, clusterID){
@@ -167,7 +168,7 @@ FindAllMarkerTable2GSEAresult_MsigDB = function(deg_df, genesets_include = c('H'
     imap(geneset_msig_list_use, function(geneset_df, cat_name){
         message("Running: ", cat_name)
         FindAllMarkerTable2GSEAresult(deg_df, geneset_use = geneset_df, ...)
-    })
+    }) %>% discard(.p = ~length(.)==0)
 }
 
 
