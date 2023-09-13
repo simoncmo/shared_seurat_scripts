@@ -1,5 +1,5 @@
 # Extrend a color palette with DiscretePalette from Seurat
-ExtendColorVector = function(color_vector = NULL, target_class, reduce = T, palettes_use = 'glasbey', palette_method = c('Seurat','RColorBrewer'), randomize = F){
+ExtendColorVector = function(color_vector = NULL, target_class, reduce = T, palettes_use = 'glasbey', palette_method = c('RColorBrewer','Seurat'), randomize = F){
     missing_classes = setdiff(unique(target_class), names(color_vector))
     # Get color and assign
     palette_method = match.arg(palette_method)
@@ -7,15 +7,16 @@ ExtendColorVector = function(color_vector = NULL, target_class, reduce = T, pale
     
     # rm duplicated color
     new_col_use = setdiff(new_col_all, color_vector) # remove exisiting color
+    
     # Choose color
     new_col_use = if(randomize) sample(new_col_use,length(missing_classes)) else new_col_use[1:length(missing_classes)]
     new_col = new_col_use %>% setNames(missing_classes)
     
     # Combine
     color_vector = c(color_vector, new_col)
+    
     # Remove 'Non exisiting item'
     if(reduce) color_vector = color_vector[unique(target_class)]
-    return(color_vector)
 }
 
 # Get All Discrete color from RColorBrewer
