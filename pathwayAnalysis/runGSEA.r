@@ -200,6 +200,44 @@ ReorderByHCluster = function(data_use, ident_column, groupby_column, values_colu
     return(data_use)
 }
 
+# For A single GSEA result --------------------------------
+GetGSEAgenes = function(gsea_result){
+    gsea_result %>% as.data.frame %>% 
+        dplyr::select(ID, core_enrichment) %>% 
+        separate_rows(core_enrichment, sep = '/') 
+}
+
+GetTopGSEAgeneList = function(gsea_result, top_n = NULL){
+    gsea_df = GetGSEAgenes(gsea_result)
+    gsea_list = split(x = gsea_df$core_enrichment, f = gsea_df$ID) 
+    if(is.null(top_n)){
+        message("No top_n specified, return all")
+    }else{
+        message("Return top_n:", top_n)
+        gsea_list %>% map(.f = ~head(.x, top_n))
+    }
+    return(gsea_list)
+}
+
+# For A LIST OF GSEA result --------------------------------
+# Get summary of values based on the values_columns (default: NES, qvalue, rank)
+SummarizeGSEAlist = function(gsea_use, value_columns = c('NES','qvalue', 'rank'), exclude_idents=NULL){
+    summary_df = imap(gsea_use, function(gsea_result, clone_id){
+        gsea_result %>% 
+            as.data.frame %>% 
+            dplyr::select(ID, all_of(value_columns)) %>% 
+            mutate(clone_id = clone_id)
+    }) %>% bind_rows() %>% remove_rownames()
+
+    # Filter out and summarize NES
+    summary_df %>% filter(!clone_id %in% exclude_idents) %>% 
+        group_by(ID) %>%
+        summarize(across(value_columns, mean)) %>% 
+        arrange(desc(across(value_columns)))%>%  # https://rlang.r-lib.org/reference/topic-data-mask-programming.html
+        as.data.frame
+}
+
+
 ## ---- Plot functions ----
 MakeGeneSetDotplot = function(gsearesult_list, plt_title = "GSEA result", subtitle = "Geneset", reorder_geneset = T, reorder_group = T, ...){
     combined_df = combineGSEAresultslist(gsearesult_list)
