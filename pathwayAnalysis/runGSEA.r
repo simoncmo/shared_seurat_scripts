@@ -187,6 +187,12 @@ ReorderByHCluster = function(data_use, ident_column, groupby_column, values_colu
         column_to_rownames(ident_column) %>% 
         as.matrix() %>% 
         t()
+
+    # safety, check if more than 2 rows. if not return as is
+    if(nrow(data_use) < 2){
+        message("Less than 2 row. Cannot cluster. return data as is")
+        return(data_use)
+    }
     # 2. cluster using hclust
     hcluster = hclust(dist(value_mtx))
     
@@ -198,6 +204,15 @@ ReorderByHCluster = function(data_use, ident_column, groupby_column, values_colu
     message("Reordered groupby_column: ", groupby_column, " by hclust")
     # 5. return the data
     return(data_use)
+}
+
+# Clean geneset name
+CleanGenesetName = function(geneset_names, terms_to_remove = c("HALLMARK"), convert_to_space = T, convert_to_title = T){
+    search_pattern = paste(str_c(terms_to_remove,"_"), collapse = "|")
+    cleaned_string = str_remove_all(geneset_names, search_pattern) 
+    if(convert_to_space) cleaned_string = str_replace_all(cleaned_string, "_", " ")
+    if(convert_to_title) cleaned_string = str_to_title(cleaned_string)
+    return(cleaned_string)
 }
 
 # For A single GSEA result --------------------------------
@@ -239,8 +254,10 @@ SummarizeGSEAlist = function(gsea_use, value_columns = c('NES','qvalue', 'rank')
 
 
 ## ---- Plot functions ----
-MakeGeneSetDotplot = function(gsearesult_list, plt_title = "GSEA result", subtitle = "Geneset", reorder_geneset = T, reorder_group = T, ...){
+MakeGeneSetDotplot = function(gsearesult_list, plt_title = "GSEA result", subtitle = "Geneset", reorder_geneset = T, reorder_group = T, clean_id = T, ...){
     combined_df = combineGSEAresultslist(gsearesult_list)
+    # Clean geneset name
+    if(clean_id) combined_df = combined_df %>% mutate(geneset = CleanGenesetName(geneset))
     # Make dotplot x = group, y = geneset, color = enrichmentScore, size = -log10(qvalue)
     # Reorder geneset/group by hclust
     if(reorder_geneset) combined_df = ReorderByHCluster(data_use = combined_df, 'group', 'geneset', 'NES') 
@@ -251,6 +268,7 @@ MakeGeneSetDotplot = function(gsearesult_list, plt_title = "GSEA result", subtit
         theme_bw() + 
         theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + 
         #facet_wrap(~group, scales = 'free_y') + 
-        labs(title = plt_title, subtitle = subtitle, color = "Normalized\nEnrichment\nScore", size = '-log10(qvalue)') 
+        labs(title = plt_title, subtitle = subtitle, color = "Normalized\nEnrichment\nScore", size = '-log10(qvalue)') + 
+        coord_fixed()
         #theme(legend.position = 'none')
 }
